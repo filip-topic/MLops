@@ -1,6 +1,6 @@
-# flows/training_flow.py
-
 from prefect import flow, task
+import numpy as np
+import mlflow.sklearn
 import subprocess
 import os
 import joblib
@@ -10,6 +10,9 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error
+
+from model.train_model import train_model
 
 @task
 def run_data_tests():
@@ -17,42 +20,53 @@ def run_data_tests():
     return result.returncode
 
 @task
-def train_model():
+def train():
+    train_model()
+
+@task
+def validate_model_robustness():
+    print("🔎 Running robustness validation...")
+
+    # Load the latest model run
+    mlflow.set_tracking_uri("file:./mlruns")
+    client = mlflow.MlflowClient()
+    runs = client.search_runs(experiment_ids=["0"], order_by=["start_time desc"], max_results=1)
+    run_id = runs[0].info.run_id
+    model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
+
     df = pd.read_csv("data/Womens Clothing E-Commerce Reviews.csv")
-
     df = df.dropna(subset=["Recommended IND", "Age", "Rating", "Division Name", "Department Name", "Class Name"])
+    
     features = ["Age", "Rating", "Positive Feedback Count", "Division Name", "Department Name", "Class Name"]
-    target = "Recommended IND"
-
     X = df[features]
-    y = df[target]
+    y = df["Recommended IND"]
 
+    # Create perturbed version of numeric columns
     numeric_cols = ["Age", "Rating", "Positive Feedback Count"]
-    categorical_cols = ["Division Name", "Department Name", "Class Name"]
+    X_perturbed = X.copy()
+    for col in numeric_cols:
+        X_perturbed[col] = X[col] * (1 + np.random.normal(0, 0.05, size=X.shape[0]))  # ±5% noise
 
-    preprocessor = ColumnTransformer([
-        ("num", "passthrough", numeric_cols),
-        ("cat", OneHotEncoder(handle_unknown="ignore"), categorical_cols)
-    ])
+    # Predict probabilities
+    probs_original = model.predict_proba(X)[:, 1]
+    probs_perturbed = model.predict_proba(X_perturbed)[:, 1]
 
-    pipeline = Pipeline([
-        ("preprocessor", preprocessor),
-        ("classifier", LogisticRegression(max_iter=1000))
-    ])
+    # Measure RMSE of change
+    drift = np.sqrt(mean_squared_error(probs_original, probs_perturbed))
+    print(f"🔧 Probability drift under noise: {drift:.4f}")
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
-    pipeline.fit(X_train, y_train)
+    threshold = 0.1
+    if drift > threshold:
+        print("⚠️  Model fails robustness test — too sensitive to small input changes.")
+    else:
+        print("✅ Model passes robustness expectation.")
 
-    model_path = "model/logistic_model.joblib"
-    joblib.dump(pipeline, model_path)
-
-    return model_path
 
 @flow(name="Training Workflow")
 def training_flow():
     run_data_tests()
-    model_path = train_model()
-    print(f"✅ Model saved to: {model_path}")
+    train_model()
+    validate_model_robustness()
 
 if __name__ == "__main__":
     training_flow()

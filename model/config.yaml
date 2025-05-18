@@ -1,0 +1,14 @@
+# config.yaml
+training:
+  min_training_size: 1000
+  fail_on_missing_columns: true
+
+data:
+  required_columns:
+    - Age
+    - Rating
+    - Positive Feedback Count
+    - Division Name
+    - Department Name
+    - Class Name
+    - Recommended IND
