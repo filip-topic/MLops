@@ -3,26 +3,65 @@
 ## Dataset 
 'Women's Clothing E-Commerce Reviews' (https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews) is a Kaggle dataset which revolves around E-commerce reviews written by customers of a specific online store. This dataset includes 23486 rows and 10 feature variables. Each row corresponds to a customer review and contains variables of varying types eg. 'Age' (int), 'Review Text' (String), Rating (int / ordered categorical), 'Recommended IND' (binary categorical).
 
-## Tests
-Data quality tests performed on the data are testing for the ammount of missing values in the 'Review' and 'Title' columns (expectations/test_mising_values.py), and for the reasonable values inside two variables 'Age' and 'Rating' (expectations/test_distribution.py). 
+## Pipeline Overview
 
-## Task 2: Model Training, Versioning, and Orchestration
+The pipeline is orchestrated using Prefect and consists of three main steps:
+1. **Data Quality Tests**: Runs data validation scripts to check for missing values and distribution expectations.
+2. **Model Training**: Trains a logistic regression model to predict `Recommended IND` using selected features, with configuration and validation checks.
+3. **Model Robustness Validation**: Validates the trained model's robustness to small input perturbations.
 
-### Overview
-- Trains a RandomForest model to predict `Recommended IND` using features: `Age`, `Rating`, `Positive Feedback Count`.
-- Uses Prefect to orchestrate three steps: data tests (Task 1), model training, and robustness validation.
-- Each model is versioned and stored with metadata (input/output schema, dependencies, accuracy, etc.).
-- Artificial error: If training data < 1000 records, the pipeline fails with a clear error message and logs the error.
+All models and metadata are versioned and tracked using MLflow (local file store). Configuration for required columns and training parameters is managed via `model/config.yaml`.
 
-### How to Run the ML Pipeline
+## Features Used for Training
+- **Numeric:**
+  - Age
+  - Rating
+  - Positive Feedback Count
+- **Categorical:**
+  - Division Name
+  - Department Name
+  - Class Name
+- **Target:**
+  - Recommended IND
+
+## Orchestration and Flow
+- The main pipeline is defined in `flows/training_flow.py` using Prefect.
+- Data quality tests are run via `pre_training_tests/main.py` as a subprocess.
+- Model training is handled by `model/train_model.py`, which loads configuration, validates data, and logs the model to MLflow.
+- After training, the latest model is loaded and validated for robustness by perturbing numeric features and checking for excessive sensitivity.
+
+## Model Versioning and Metadata
+- Models are logged to MLflow under the experiment `recommendation-models`.
+- Each run includes:
+  - The trained model (with input signature and example)
+  - Model parameters
+  - `requirements.txt` as an artifact
+- MLflow's local file store is used for experiment tracking and model registry.
+
+## Error Handling
+- The pipeline checks for:
+  - Presence of all required columns (as specified in `model/config.yaml`)
+  - Sufficient dataset size (minimum configurable in `model/config.yaml`)
+  - File errors and unexpected exceptions
+- Clear error messages are printed and surfaced in the Prefect flow if any validation fails.
+
+## Model Robustness Validation
+- After training, the pipeline perturbs numeric features (±5% noise) and checks the change in predicted probabilities.
+- If the root mean squared error (RMSE) of probability drift exceeds 0.1, the model is flagged as too sensitive.
+- This helps ensure the model is robust to small input changes and not overfitted.
+
+## Configuration
+- All key parameters (required columns, minimum training size, error handling) are set in `model/config.yaml`.
+
+## How to Run the ML Pipeline
 
 1. **Build the Docker image:**
-   ```bash
-   docker build -t ml-pipeline .
+   ```PS
+   docker build -t pre_deployment_test .
    ```
 2. **Run the pipeline:**
-   ```bash
-   docker run ml-pipeline
+   ```PS
+   docker run -v "${PWD}/mlruns:/app/mlruns" pre-deployment-test
    ```
    This will:
    - Run Task 1 data tests
@@ -30,44 +69,31 @@ Data quality tests performed on the data are testing for the ammount of missing 
    - Version the model and save metadata
    - Validate model robustness on edge cases
 
-### Model Versioning
-- Each model is saved in `model/model_<timestamp>/` with:
-  - `model.joblib`: Serialized model
-  - `metadata.json`: Metadata including input/output schema, features, dependencies, accuracy, and creation time
-- A utility in `src/model/versioning.py` allows listing and loading models by ID
-
-### Error Handling in Training
-- If the training dataset is too small (< 1000 records), training fails with a clear error and logs the reason.
-- All errors are logged in the Prefect flow and surfaced in the output.
-- This ensures the pipeline does not silently produce unreliable models.
-
-### Model Robustness Validation
-- After training, the pipeline loads the model and checks predictions on edge-case synthetic data.
-- The model must not always predict the same class and must produce valid outputs for edge cases.
-- This helps catch undesired model behavior before deployment.
-
 ### Local Development
 - You can run the flow locally with:
   ```bash
-  python src/flow.py
+  python flows/training_flow.py
   ```
-- To list or load models, use the utilities in `src/model/versioning.py`.
+- Model training can be run directly with:
+  ```bash
+  python model/train_model.py
+  ```
 
 ### Requirements
-- All dependencies for Task 2 are in `requirements.txt`.
-- Prefect, joblib, scikit-learn, and pandas are required for orchestration and model handling.
+- All dependencies are listed in `requirements.txt`.
+- Prefect, joblib, scikit-learn, pandas, mlflow, and pyyaml are required for orchestration, model handling, and configuration.
 
 ### Directory Structure
-- `src/model/train.py`: Model training and serialization
-- `src/model/versioning.py`: Model registry and loading
-- `src/model/robustness.py`: Robustness checks
-- `src/flow.py`: Prefect pipeline
-- `model/`: Stores all serialized models and metadata
-- `expectations/`: Data tests from Task 1
+- `model/train_model.py`: Model training and MLflow logging
+- `flows/training_flow.py`: Prefect pipeline
+- `pre_training_tests/`: Data quality tests
+- `model/config.yaml`: Configuration for required columns and training parameters
+- `mlruns/`: MLflow experiment tracking and model registry
+- `data/`: Input data
 
 ---
 
-This setup ensures your pipeline is robust, versioned, and locally reproducible, and that it meets all Task 2 requirements for your MLOps course.
+This setup ensures your pipeline is robust, versioned, locally reproducible, and meets all requirements for your MLOps course.
 
 ## Expectation definitions
 
