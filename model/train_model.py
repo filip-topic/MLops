@@ -13,7 +13,7 @@ import mlflow.sklearn
 from mlflow.models.signature import infer_signature
 
 
-def load_config(path="config.yaml"):
+def load_config(path="model/config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
 

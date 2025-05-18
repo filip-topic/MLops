@@ -1,8 +1,13 @@
+import os
+import sys
+
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from prefect import flow, task
 import numpy as np
 import mlflow.sklearn
 import subprocess
-import os
 import joblib
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
@@ -16,7 +21,7 @@ from model.train_model import train_model
 
 @task
 def run_data_tests():
-    result = subprocess.run(["python", "pre_training_tests/main.py"], check=True)
+    result = subprocess.run([sys.executable, "pre_training_tests/main.py"], check=True)
     return result.returncode
 
 @task
@@ -30,7 +35,15 @@ def validate_model_robustness():
     # Load the latest model run
     mlflow.set_tracking_uri("file:./mlruns")
     client = mlflow.MlflowClient()
-    runs = client.search_runs(experiment_ids=["0"], order_by=["start_time desc"], max_results=1)
+
+    experiment = client.get_experiment_by_name("recommendation-models")
+    if experiment is None:
+        raise ValueError("Experiment 'recommendation-models' not found. Has the model been logged properly?")
+
+    runs = client.search_runs(experiment_ids=[experiment.experiment_id], order_by=["start_time desc"], max_results=1)
+    if not runs:
+        raise ValueError(f"No runs found in experiment '{experiment.name}' (ID: {experiment.experiment_id})")
+
     run_id = runs[0].info.run_id
     model = mlflow.sklearn.load_model(f"runs:/{run_id}/model")
 
@@ -65,7 +78,7 @@ def validate_model_robustness():
 @flow(name="Training Workflow")
 def training_flow():
     run_data_tests()
-    train_model()
+    train()
     validate_model_robustness()
 
 if __name__ == "__main__":
