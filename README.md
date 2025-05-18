@@ -6,14 +6,68 @@
 ## Tests
 Data quality tests performed on the data are testing for the ammount of missing values in the 'Review' and 'Title' columns (expectations/test_mising_values.py), and for the reasonable values inside two variables 'Age' and 'Rating' (expectations/test_distribution.py). 
 
-## Running the code
-expectations/main.py is the main script that calls upon the testing functions from the already mentioned scripts. The project is fully dockerized. To run it, open the Powershell and first run: 
+## Task 2: Model Training, Versioning, and Orchestration
 
-"docker build -t data-quality-check ."
+### Overview
+- Trains a RandomForest model to predict `Recommended IND` using features: `Age`, `Rating`, `Positive Feedback Count`.
+- Uses Prefect to orchestrate three steps: data tests (Task 1), model training, and robustness validation.
+- Each model is versioned and stored with metadata (input/output schema, dependencies, accuracy, etc.).
+- Artificial error: If training data < 1000 records, the pipeline fails with a clear error message and logs the error.
 
-, then:
+### How to Run the ML Pipeline
 
-"docker run data-quality-check"
+1. **Build the Docker image:**
+   ```bash
+   docker build -t ml-pipeline .
+   ```
+2. **Run the pipeline:**
+   ```bash
+   docker run ml-pipeline
+   ```
+   This will:
+   - Run Task 1 data tests
+   - Train and serialize a model (if enough data)
+   - Version the model and save metadata
+   - Validate model robustness on edge cases
+
+### Model Versioning
+- Each model is saved in `model/model_<timestamp>/` with:
+  - `model.joblib`: Serialized model
+  - `metadata.json`: Metadata including input/output schema, features, dependencies, accuracy, and creation time
+- A utility in `src/model/versioning.py` allows listing and loading models by ID
+
+### Error Handling in Training
+- If the training dataset is too small (< 1000 records), training fails with a clear error and logs the reason.
+- All errors are logged in the Prefect flow and surfaced in the output.
+- This ensures the pipeline does not silently produce unreliable models.
+
+### Model Robustness Validation
+- After training, the pipeline loads the model and checks predictions on edge-case synthetic data.
+- The model must not always predict the same class and must produce valid outputs for edge cases.
+- This helps catch undesired model behavior before deployment.
+
+### Local Development
+- You can run the flow locally with:
+  ```bash
+  python src/flow.py
+  ```
+- To list or load models, use the utilities in `src/model/versioning.py`.
+
+### Requirements
+- All dependencies for Task 2 are in `requirements.txt`.
+- Prefect, joblib, scikit-learn, and pandas are required for orchestration and model handling.
+
+### Directory Structure
+- `src/model/train.py`: Model training and serialization
+- `src/model/versioning.py`: Model registry and loading
+- `src/model/robustness.py`: Robustness checks
+- `src/flow.py`: Prefect pipeline
+- `model/`: Stores all serialized models and metadata
+- `expectations/`: Data tests from Task 1
+
+---
+
+This setup ensures your pipeline is robust, versioned, and locally reproducible, and that it meets all Task 2 requirements for your MLOps course.
 
 ## Expectation definitions
 
