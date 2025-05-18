@@ -1,0 +1,6 @@
+from test_distribution import run_distribution_test
+from test_missing_values import run_missing_values_test
+
+run_distribution_test()
+
+run_missing_values_test()
