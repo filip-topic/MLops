@@ -54,13 +54,17 @@ All models and metadata are versioned and tracked using MLflow (local file store
 
 ## How to Run the ML Pipeline
 
-1. **Build the Docker image:**
-   ```PS
-   docker build -t pre_deployment_test .
+1. **Build the Docker images:**
+   ```bash
+   docker build -f ./pre_training_tests/Dockerfile -t pre-training-tests-image .
+   docker build -f ./model/train/Dockerfile -t model-train-image .
+   docker build -f ./model/validate/Dockerfile -t model-validate-image .
+   docker build -t flow-image .
    ```
 2. **Run the pipeline:**
    ```PS
    docker run -v "${PWD}/mlruns:/app/mlruns" pre-deployment-test
+   docker run flow-image
    ```
    This will:
    - Run Task 1 data tests

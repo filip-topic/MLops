@@ -1,2 +1,2 @@
-pandas==1.5.3
-great_expectations==0.16.13
+pandas>=2.2
+great_expectations>=0.18

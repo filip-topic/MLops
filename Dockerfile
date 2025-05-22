@@ -1,21 +1,18 @@
-# Dockerfile
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-# Install system deps
-RUN apt-get update && apt-get install -y gcc
+# install Docker CLI so subprocess(["docker", ...]) will work
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends docker.io \
+ && rm -rf /var/lib/apt/lists/*
 
-# Set workdir
 WORKDIR /app
 
-# Copy requirements and install
+# Prefect + plugins only
+
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy rest of the code
-COPY . .
-
-# Prefect needs a home directory set (optional)
-ENV PREFECT_HOME=/app/.prefect
-
-# Run the full ML flow on container start
-CMD ["python", "flows/training_flow.py"]
+# Copy orchestration code (keep it small)
+COPY flows/ /app/flows
+WORKDIR /app/flows
+CMD ["python", "training_flow.py"]
