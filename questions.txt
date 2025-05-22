@@ -1,0 +1,3 @@
+Separate requirements.txt for each step?? (part 1)
+script that loads the models?? (part 2 - versioning models)
+Justify the drift logic?? (part 3 - drift)

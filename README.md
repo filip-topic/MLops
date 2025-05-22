@@ -27,7 +27,7 @@ All models and metadata are versioned and tracked using MLflow (local file store
 ## Orchestration and Flow
 - The main pipeline is defined in `flows/training_flow.py` using Prefect.
 - Data quality tests are run via `pre_training_tests/main.py` as a subprocess.
-- Model training is handled by `model/train_model.py`, which loads configuration, validates data, and logs the model to MLflow.
+- Model training is handled by `model/train.py`, which loads configuration, validates data, and logs the model to MLflow.
 - After training, the latest model is loaded and validated for robustness by perturbing numeric features and checking for excessive sensitivity.
 
 ## Model Versioning and Metadata
@@ -48,7 +48,6 @@ All models and metadata are versioned and tracked using MLflow (local file store
 ## Model Robustness Validation
 - After training, the pipeline perturbs numeric features (±5% noise) and checks the change in predicted probabilities.
 - If the root mean squared error (RMSE) of probability drift exceeds 0.1, the model is flagged as too sensitive.
-- This helps ensure the model is robust to small input changes and not overfitted.
 
 ## Configuration
 - All key parameters (required columns, minimum training size, error handling) are set in `model/config.yaml`.

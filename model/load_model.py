@@ -1,5 +1,3 @@
-# model/load_model.py
-
 import mlflow.sklearn
 
 def load_model_by_run_id(run_id: str):
@@ -10,4 +8,4 @@ def load_model_by_run_id(run_id: str):
 if __name__ == "__main__":
     run_id = input("Enter MLflow Run ID: ").strip()
     model = load_model_by_run_id(run_id)
-    print("✅ Model loaded.")
+    print("Model loaded.")

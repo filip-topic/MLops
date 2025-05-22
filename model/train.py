@@ -32,7 +32,7 @@ def train_model():
             if config["training"]["fail_on_missing_columns"]:
                 raise ValueError(msg)
             else:
-                print(f"⚠️ Warning: {msg}")
+                print(f"Warning: {msg}")
 
         # Drop rows missing required values
         df = df.dropna(subset=required_cols)
@@ -77,14 +77,14 @@ def train_model():
 
             mlflow.log_params({"model_type": "LogisticRegression"})
             mlflow.log_artifact("model/requirements.txt")
-            print(f"✅ Model logged to MLflow with Run ID: {run.info.run_id}")
+            print(f"Model logged to MLflow with Run ID: {run.info.run_id}")
 
     except FileNotFoundError as fnf:
-        print(f"❌ File error: {fnf}")
+        print(f"File error: {fnf}")
     except ValueError as ve:
-        print(f"❌ Validation error: {ve}")
+        print(f"Validation error: {ve}")
     except Exception as e:
-        print(f"❌ Unexpected error: {e}")
+        print(f"Unexpected error: {e}")
 
 
 if __name__ == "__main__":
