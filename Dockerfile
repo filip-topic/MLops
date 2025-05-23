@@ -13,6 +13,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy orchestration code (keep it small)
-COPY flows/ /app/flows
+#COPY flows/ /app/flows
+COPY . .
 WORKDIR /app/flows
 CMD ["python", "training_flow.py"]

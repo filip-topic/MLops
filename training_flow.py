@@ -10,9 +10,9 @@ from prefect import flow, task
 #     training_flow.py   ← this file   (__file__)
 #   ↑ project root       ← parent of flows/
 # ────────────────────────────────────────────────────────────────────────────
-PROJECT_ROOT = Path(__file__).resolve().parents[1]   # …/MLO_exercises
-DATA_DIR     = PROJECT_ROOT / "data"
-MLRUNS_DIR   = PROJECT_ROOT / "mlruns"
+PROJECT_ROOT = Path(__file__).resolve().parent   # …/MLO_exercises
+DATA_DIR = PROJECT_ROOT.as_posix() + "/data"
+MLRUNS_DIR   = PROJECT_ROOT.as_posix() + "/mlruns"
 
 # For Windows paths, Docker just needs simple strings
 DATA_DIR   = str(DATA_DIR)
@@ -50,7 +50,20 @@ class DockerContainer:
         cmd += self.command.split()
 
         # execute, streaming stdout/stderr
+        print(cmd)
         subprocess.run(cmd, check=True)
+
+
+# task for debugging
+@task
+def debug_listing():
+    DockerContainer(
+        image="pre-training-tests-image:latest",
+        command="bash -lc 'ls -l /app/data'",
+        volumes=[ f"{DATA_DIR}:/app/data:ro" ],
+        name="debug-data-mount",
+    ).run()
+
 
 # ────────────────────────────────────────────────────────────────────────────
 # 1️⃣  Data-quality tests  (image built from ./pre_training_tests)
@@ -65,7 +78,7 @@ def run_data_tests() -> None:
         ],
         image_pull_policy="IF_NOT_PRESENT",
         stream_output=True,
-        name="Run data-quality tests",
+        name="run-data-quality-tests",
     ).run()
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -85,7 +98,7 @@ def train_model() -> None:
         },
         image_pull_policy="IF_NOT_PRESENT",
         stream_output=True,
-        name="Train model",
+        name="train-model",
     ).run()
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -104,7 +117,7 @@ def validate_model_robustness() -> None:
         },
         image_pull_policy="IF_NOT_PRESENT",
         stream_output=True,
-        name="Validate robustness",
+        name="validate-robustness",
     ).run()
 
 # ────────────────────────────────────────────────────────────────────────────

@@ -1,6 +1,4 @@
-# train_model Dockerfile
-
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -9,5 +7,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Expect the dataset and (optionally) an ./mlruns volume to be mounted at runtime
+# When run, this will execute your training script
 CMD ["python", "train.py"]
+

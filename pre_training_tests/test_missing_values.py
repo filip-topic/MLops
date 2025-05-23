@@ -1,5 +1,3 @@
-
-
 from great_expectations.dataset import PandasDataset
 import pandas as pd
 
@@ -25,3 +23,6 @@ def run_missing_values_test():
     print(f"Dataset has less than {pct * 100}% of missing values in the 'Review' column")
     assert dataset.expect_column_to_have_missing_values_less_than_threshold("Title", pct)["success"]
     print(f"Dataset has less than {pct * 100}% of missing values in the 'Title' column")
+
+    with open("missing_values_flag.txt", "w") as f:
+        pass  # This creates the file and closes it without writing anything

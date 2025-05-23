@@ -1,6 +1,4 @@
-# validate_model Dockerfile
-
-FROM python:3.10-slim
+FROM python:3.9-slim
 
 WORKDIR /app
 
@@ -9,5 +7,5 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Expect dataset + mlruns volume
+# Runs the robustness checks against your MLflow artifacts
 CMD ["python", "validate_robustness.py"]

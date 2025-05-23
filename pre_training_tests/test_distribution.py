@@ -19,3 +19,6 @@ def run_distribution_test():
     # Test Rating Distribution: Ratings should be between 1 and 5
     assert dataset.expect_column_values_to_be_between_with_reasonable_range("Rating", 1, 5)["success"]
     print(f"All values in the 'Rating' column are within reasonable bounds")
+
+    with open("distribution_flag.txt", "w") as f:
+        pass  # This creates the file and closes it without writing anything
