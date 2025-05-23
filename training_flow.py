@@ -71,13 +71,13 @@ def debug_listing():
 @task
 def run_data_tests() -> None:
     DockerContainer(
-        image="pre-training-tests-image:latest",         # build tag: docker build -t pre-training-tests-image ./pre_training_tests
+        image="pre-training-tests-image:latest",
         command="python main.py",
+        # mount data read-only, but mount host pre_training_tests for output
         volumes=[
-            f"{DATA_DIR}:/app/data:ro",                  # dataset, read-only
+            f"{DATA_DIR}:/app/data:ro",
+            f"{PROJECT_ROOT}/pre_training_tests:/app"      # ← here
         ],
-        image_pull_policy="IF_NOT_PRESENT",
-        stream_output=True,
         name="run-data-quality-tests",
     ).run()
 
