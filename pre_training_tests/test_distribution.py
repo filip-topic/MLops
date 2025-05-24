@@ -1,5 +1,6 @@
 from great_expectations.dataset import PandasDataset
 import pandas as pd
+import os
 
 
 
@@ -20,5 +21,5 @@ def run_distribution_test():
     assert dataset.expect_column_values_to_be_between_with_reasonable_range("Rating", 1, 5)["success"]
     print(f"All values in the 'Rating' column are within reasonable bounds")
 
-    with open("distribution_flag.txt", "w") as f:
-        pass  # This creates the file and closes it without writing anything
+    with open("distribution_flag.ctl", "w") as f:
+        pass  

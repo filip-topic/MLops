@@ -56,9 +56,9 @@ All models and metadata are versioned and tracked using MLflow (local file store
 
 1. **Build the Docker images:**
    ```bash
-   docker build -f ./pre_training_tests/Dockerfile -t pre-training-tests-image .
-   docker build -f ./model/train/Dockerfile -t model-train-image .
-   docker build -f ./model/validate/Dockerfile -t model-validate-image .
+    docker build -t pre-training-tests-image:latest    ./pre_training_tests
+    docker build -t model-train-image:latest          ./model/train
+    docker build -t model-validate-image:latest       ./model/validate
    docker build -t flow-image .
    ```
 2. **Run the pipeline:**

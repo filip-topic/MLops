@@ -12,11 +12,13 @@ from prefect import flow, task
 # ────────────────────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent   # …/MLO_exercises
 DATA_DIR = PROJECT_ROOT.as_posix() + "/data"
-MLRUNS_DIR   = PROJECT_ROOT.as_posix() + "/mlruns"
+MLRUNS_DIR = PROJECT_ROOT.as_posix() + "/mlruns"
+TESTS_DIR = PROJECT_ROOT.as_posix() + "/pre_training_tests"
 
 # For Windows paths, Docker just needs simple strings
-DATA_DIR   = str(DATA_DIR)
+DATA_DIR = str(DATA_DIR)
 MLRUNS_DIR = str(MLRUNS_DIR)
+TESTS_DIR = str(TESTS_DIR)
 
 
 class DockerContainer:
@@ -90,8 +92,9 @@ def train_model() -> None:
         image="model-train-image:latest",                # docker build -t model-train-image ./model/train
         command="python train.py",
         volumes=[
-            f"{DATA_DIR}:/app/data:ro",                  # dataset
-            f"{MLRUNS_DIR}:/app/mlruns",                 # where MLflow will log runs + artefacts
+            f"{DATA_DIR}:/app/data:ro",                  
+            f"{MLRUNS_DIR}:/app/mlruns", 
+            f"{TESTS_DIR}:/app/pre_training_tests"                
         ],
         env={
             "MLFLOW_TRACKING_URI": "file:/app/mlruns",

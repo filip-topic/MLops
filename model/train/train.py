@@ -1,6 +1,7 @@
 # model/train_model.py
 
 import os
+import sys
 import pandas as pd
 import yaml
 from sklearn.linear_model import LogisticRegression
@@ -13,7 +14,10 @@ import mlflow.sklearn
 from mlflow.models.signature import infer_signature
 
 
-def load_config(path="model/config.yaml"):
+
+
+
+def load_config(path="./config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
@@ -76,7 +80,7 @@ def train_model():
             )
 
             mlflow.log_params({"model_type": "LogisticRegression"})
-            mlflow.log_artifact("model/requirements.txt")
+            mlflow.log_artifact("requirements.txt")
             print(f"Model logged to MLflow with Run ID: {run.info.run_id}")
 
     except FileNotFoundError as fnf:
@@ -88,4 +92,25 @@ def train_model():
 
 
 if __name__ == "__main__":
+
+    ###############################################
+    # this code makes sure that training proceeds only if training data is fine
+    #################################################
+    directory = "./pre_training_tests"
+    missing_values_flag = os.path.join(directory, "missing_values_flag.ctl")
+    distribution_flag = os.path.join(directory, "distribution_flag.ctl")
+    # Check for missing_values_flag.ctl
+    if not os.path.exists(missing_values_flag):
+        print("Error: Too many missing values in the data")
+        sys.exit(1)
+    # Check for distribution_flag.ctl
+    if not os.path.exists(distribution_flag):
+        print("Error: Values in the data are outside the distribution. Something is wrong")
+        sys.exit(1)
+    # Proceed if both files exist
+    print("Data distribution is fine.")
+    print("Ammount of missing values is within reason.")
+    print("Training can proceed.")
+
+    # training the model
     train_model()
