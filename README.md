@@ -1,4 +1,4 @@
-# 'Women's Clothing E-Commerce Reviews' dataset quality test
+# 'Women's Clothing E-Commerce Reviews' dataset ML flow
 
 ## Dataset 
 'Women's Clothing E-Commerce Reviews' (https://www.kaggle.com/datasets/nicapotato/womens-ecommerce-clothing-reviews) is a Kaggle dataset which revolves around E-commerce reviews written by customers of a specific online store. This dataset includes 23486 rows and 10 feature variables. Each row corresponds to a customer review and contains variables of varying types eg. 'Age' (int), 'Review Text' (String), Rating (int / ordered categorical), 'Recommended IND' (binary categorical).
@@ -25,78 +25,62 @@ All models and metadata are versioned and tracked using MLflow (local file store
   - Recommended IND
 
 ## Orchestration and Flow
-- The main pipeline is defined in `flows/training_flow.py` using Prefect.
-- Data quality tests are run via `pre_training_tests/main.py` as a subprocess.
-- Model training is handled by `model/train.py`, which loads configuration, validates data, and logs the model to MLflow.
-- After training, the latest model is loaded and validated for robustness by perturbing numeric features and checking for excessive sensitivity.
+- The main pipeline is defined in `./training_flow.py` using Prefect. Each step is dockerized separately with its own requirements.txt and Dockerfile. Custom DockerContainer class is created in training_flow.py which is used to execute the steps (tasks) as separate containers.
+- Data quality tests are run via `./pre_training_tests/main.py` as a subprocess and .ctl files are written which indicate whether the data has passed these tests.
+- Model training is handled by `model/train/train.py`, which checks whether data has passed the data-quality tests from the previous step, loads configuration, trains the model, and logs the model to MLflow.
+- After training, the latest model is loaded and validated for robustness by perturbing numeric features and checking for excessive sensitivity. This happens in `./model/validate/validate_robustness.py`
 
 ## Model Versioning and Metadata
 - Models are logged to MLflow under the experiment `recommendation-models`.
+- All information regarding runs and versions is inside the `./mlruns` folder
+- Metadata for each run is in `mlruns/models/recommendation_model/version-{MODEL_VERSION}`
+- Models runs are represented in `./mlruns/{random-18digit-number}/{RUN_ID}`
 - Each run includes:
   - The trained model (with input signature and example)
   - Model parameters
   - `requirements.txt` as an artifact
 - MLflow's local file store is used for experiment tracking and model registry.
+- Model weights are in `./mlruns/{random-18digit-number}/{RUN_ID}/artifacts/model/model.pkl`
+- Model requirements are in `./mlruns/{random-18digit-number}/{RUN_ID}/artifacts/requirements.txt`
 
 ## Error Handling
-- The pipeline checks for:
-  - Presence of all required columns (as specified in `model/config.yaml`)
-  - Sufficient dataset size (minimum configurable in `model/config.yaml`)
+- The pipeline (step 2: `model/train/train_model.py`) checks for:
+  - Presence of all required columns (as specified in `model/train/config.yaml`)
+  - Sufficient dataset size (minimum configurable in `model/train/config.yaml`)
   - File errors and unexpected exceptions
 - Clear error messages are printed and surfaced in the Prefect flow if any validation fails.
 
-## Model Robustness Validation
-- After training, the pipeline perturbs numeric features (±5% noise) and checks the change in predicted probabilities.
-- If the root mean squared error (RMSE) of probability drift exceeds 0.1, the model is flagged as too sensitive.
+## Robustness Expectation and Rationale
+
+We define robustness as the model’s ability to maintain stable output probabilities under small, realistic perturbations to numeric input features. Specifically, we add ±5% Gaussian noise to features like `Age`, `Rating`, and `Positive Feedback Count`, and compute the RMSE between the model's predicted probabilities on the original and perturbed inputs.
+
+A threshold of **0.1 RMSE** is used to flag excessive sensitivity. This captures undesirable behavior where minor input variations cause disproportionate output shifts—common in overfitted or unstable models.
+
+This approach aligns with robustness evaluation practices in real-world ML systems, where performance drift under noise is a key indicator of generalization.
+
 
 ## Configuration
-- All key parameters (required columns, minimum training size, error handling) are set in `model/config.yaml`.
+- All key parameters (required columns, minimum training size, error handling) are set in `./model/train/config.yaml`.
 
 ## How to Run the ML Pipeline
+- run "chmod +x run.sh" in bash to give permission for the run.sh file that is provided
+- run "./run.sh" script
 
-1. **Build the Docker images:**
-   ```bash
-    docker build -t pre-training-tests-image:latest    ./pre_training_tests
-    docker build -t model-train-image:latest          ./model/train
-    docker build -t model-validate-image:latest       ./model/validate
-   docker build -t flow-image .
-   ```
-2. **Run the pipeline:**
-   ```PS
-   docker run -v "${PWD}/mlruns:/app/mlruns" pre-deployment-test
-   docker run flow-image
-   ```
-   This will:
-   - Run Task 1 data tests
-   - Train and serialize a model (if enough data)
-   - Version the model and save metadata
-   - Validate model robustness on edge cases
+./run.sh
+- builds the Dockerfiles for each step in the flow (3) and r
+- installs minimalist requirements.txt which are needed to run the flow script (`./training_flow.py`)
+- runs the flow (`./training_flow.py`)
 
-### Local Development
-- You can run the flow locally with:
-  ```bash
-  python flows/training_flow.py
-  ```
-- Model training can be run directly with:
-  ```bash
-  python model/train_model.py
-  ```
 
-### Requirements
-- All dependencies are listed in `requirements.txt`.
-- Prefect, joblib, scikit-learn, pandas, mlflow, and pyyaml are required for orchestration, model handling, and configuration.
-
-### Directory Structure
-- `model/train_model.py`: Model training and MLflow logging
-- `flows/training_flow.py`: Prefect pipeline
+## Project Structure
 - `pre_training_tests/`: Data quality tests
-- `model/config.yaml`: Configuration for required columns and training parameters
+- `model/train/train_model.py`: Model training and MLflow logging
+- `model/validate/validate_robustness.py`: Model validation
+- `training_flow.py`: Prefect pipeline
+- `model/train/config.yaml`: Configuration for required columns and training parameters
 - `mlruns/`: MLflow experiment tracking and model registry
 - `data/`: Input data
 
----
-
-This setup ensures your pipeline is robust, versioned, locally reproducible, and meets all requirements for your MLOps course.
 
 ## Expectation definitions
 

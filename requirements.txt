@@ -1,3 +1,4 @@
 prefect==2.14.2
-prefect-shell
+griffe==0.36.4
+prefect-shell==0.2.2
 

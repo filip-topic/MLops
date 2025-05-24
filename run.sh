@@ -19,4 +19,7 @@ echo "✔ Step images built."
 
 pip install -r requirements.txt
 
+echo "✔ requirements.txt installed."
+
+# running the main flow
 python training_flow.py
