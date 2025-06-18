@@ -14,17 +14,23 @@ import mlflow.sklearn
 from mlflow.models.signature import infer_signature
 
 
-
-
-
 def load_config(path="./config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
+    
+def get_param(env_var, cast_type=int):
+    val = os.environ.get(env_var)
+    if val is not None:
+        return cast_type(val)
 
 def train_model():
 
     try:
         config = load_config()
+
+        min_training_size = get_param("MIN_TRAINING_SIZE", int)
+        max_iter = get_param("MAX_ITER", int)
+        random_state = get_param("RANDOM_STATE", int)
 
         df = pd.read_csv("data/Womens Clothing E-Commerce Reviews.csv")
 
@@ -42,7 +48,7 @@ def train_model():
         df = df.dropna(subset=required_cols)
 
         # Size check
-        if len(df) < config["training"]["min_training_size"]:
+        if len(df) < min_training_size:
             raise ValueError(f"Training aborted: dataset too small ({len(df)} rows).")
 
         # --- Training Logic ---
@@ -59,10 +65,10 @@ def train_model():
 
         pipeline = Pipeline([
             ("preprocessor", preprocessor),
-            ("classifier", LogisticRegression(max_iter=1000))
+            ("classifier", LogisticRegression(max_iter=max_iter))
         ])
 
-        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=42)
+        X_train, X_test, y_train, y_test = train_test_split(X, y, random_state=random_state)
 
         mlflow.set_tracking_uri("file:./mlruns")
         mlflow.set_experiment("recommendation-models")
@@ -79,7 +85,12 @@ def train_model():
                 registered_model_name="recommendation_model"
             )
 
-            mlflow.log_params({"model_type": "LogisticRegression"})
+            mlflow.log_params({
+                "model_type": "LogisticRegression",
+                "min_training_size": min_training_size,
+                "max_iter": max_iter,
+                "random_state": random_state
+            })
             mlflow.log_artifact("requirements.txt")
             print(f"Model logged to MLflow with Run ID: {run.info.run_id}")
 

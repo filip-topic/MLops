@@ -11,9 +11,9 @@ ORCH_IMG="training-orchestrator:latest"     # optional
 
 echo "▶ Building step images…"
 
-docker build -t "${STEP_IMG_DATA_TESTS}" ./pre_training_tests
-docker build -t "${STEP_IMG_TRAIN}" ./model/train
-docker build -t "${STEP_IMG_VALIDATE}" ./model/validate
+docker build --no-cache -t "${STEP_IMG_DATA_TESTS}" ./pre_training_tests
+docker build --no-cache -t "${STEP_IMG_TRAIN}" ./model/train
+docker build --no-cache -t "${STEP_IMG_VALIDATE}" ./model/validate
 
 echo "✔ Step images built."
 

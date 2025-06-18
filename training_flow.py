@@ -2,6 +2,8 @@ from pathlib import Path
 import subprocess
 from typing import List, Dict, Optional
 from prefect import flow, task
+import os
+import yaml
 #from prefect_docker import DockerContainer
 
 # ────────────────────────────────────────────────────────────────────────────
@@ -20,6 +22,19 @@ DATA_DIR = str(DATA_DIR)
 MLRUNS_DIR = str(MLRUNS_DIR)
 TESTS_DIR = str(TESTS_DIR)
 
+def load_config(path="./model/train/config.yaml"):
+    with open(path, "r") as f:
+        return yaml.safe_load(f)
+
+def get_param(config, config_path, default=None):
+    keys = config_path.split('.')
+    cfg = config
+    for k in keys:
+        cfg = cfg.get(k, None)
+        if cfg is None:
+            return default
+    return cfg
+
 
 class DockerContainer:
     def __init__(
@@ -32,11 +47,11 @@ class DockerContainer:
         stream_output: bool = True,
         name: Optional[str] = None,
     ):
-        self.image  = image
+        self.image = image
         self.command = command
         self.volumes = volumes or []
-        self.env     = env or {}
-        self.name    = name or image
+        self.env = env or {}
+        self.name = name or image
 
     def run(self):
         # build base docker command
@@ -87,17 +102,24 @@ def run_data_tests() -> None:
 # 2️⃣  Model training  (image built from ./model/train)
 # ────────────────────────────────────────────────────────────────────────────
 @task
-def train_model() -> None:
+def train_model(
+    min_training_size: int = None,
+    max_iter: int = None,
+    random_state: int = 42
+) -> None:
     DockerContainer(
-        image="model-train-image:latest",                # docker build -t model-train-image ./model/train
+        image="model-train-image:latest",
         command="python train.py",
         volumes=[
-            f"{DATA_DIR}:/app/data:ro",                  
-            f"{MLRUNS_DIR}:/app/mlruns", 
-            f"{TESTS_DIR}:/app/pre_training_tests"                
+            f"{DATA_DIR}:/app/data:ro",
+            f"{MLRUNS_DIR}:/app/mlruns",
+            f"{TESTS_DIR}:/app/pre_training_tests"
         ],
         env={
             "MLFLOW_TRACKING_URI": "file:/app/mlruns",
+            "MIN_TRAINING_SIZE": str(min_training_size),
+            "MAX_ITER": str(max_iter),
+            "RANDOM_STATE": str(random_state),
         },
         image_pull_policy="IF_NOT_PRESENT",
         stream_output=True,
@@ -126,11 +148,22 @@ def validate_model_robustness() -> None:
 # ────────────────────────────────────────────────────────────────────────────
 # Prefect Flow orchestration
 # ────────────────────────────────────────────────────────────────────────────
+
+config = load_config()
+
+min_training_size = get_param(config, "training.min_training_size", 1000)
+max_iter = get_param(config, "training.max_iter", 10)
+random_state = get_param(config, "training.random_state", 42)
+
 @flow(name="Training Workflow")
-def training_flow() -> None:
+def training_flow(
+    min_training_size: int = min_training_size,
+    max_iter: int = max_iter,
+    random_state: int = random_state
+) -> None:
     run_data_tests()
-    train_model()
+    train_model(min_training_size, max_iter, random_state)
     validate_model_robustness()
 
 if __name__ == "__main__":
-    training_flow()
+    training_flow() #.serve.run()

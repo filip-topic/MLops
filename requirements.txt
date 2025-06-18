@@ -1,4 +1,6 @@
 prefect==2.14.2
 griffe==0.36.4
 prefect-shell==0.2.2
+mlflow==2.13
+scikit-learn==1.
 
