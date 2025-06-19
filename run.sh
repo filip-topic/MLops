@@ -17,7 +17,7 @@ docker build -t "${STEP_IMG_VALIDATE}" ./model/validate #--no-cache
 
 echo "✔ Step images built."
 
-#pip install -r requirements.txt
+pip install -r requirements.txt
 
 echo "✔ requirements.txt installed."
 
