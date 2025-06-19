@@ -2,7 +2,7 @@
 training:
   min_training_size: 1000
   fail_on_missing_columns: true
-  max_iter: 10
+  max_iter: 1000
   random_state: 42
 
 
