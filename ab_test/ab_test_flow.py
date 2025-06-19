@@ -2,6 +2,7 @@ from pathlib import Path
 import subprocess
 from prefect import flow, task
 from typing import List, Dict, Optional
+import json, pathlib
 
 PROJECT_ROOT = Path(__file__).resolve().parent
 DATA_DIR = PROJECT_ROOT.parent / "data"
@@ -18,18 +19,6 @@ class DockerContainer:
         for k, v in self.env.items(): cmd += ["-e", f"{k}={v}"]
         cmd.append(self.image); cmd += self.command.split()
         print(" →", " ".join(cmd)); subprocess.run(cmd, check=True)
-
-@task
-def step_load_config():
-    DockerContainer(
-        image="ab-load_config:latest",
-        command="python ab_test/tasks/load_config/load_config.py --output-dir /outputs --config /app/model/train/config.yaml",
-        volumes=[
-            f"{PROJECT_ROOT.parent}:/app:ro",  # includes config.yaml at project root
-            f"{ARTIFACT_DIR}:/outputs",
-        ],
-        name="ab-load_config"
-    ).run()
 
 @task
 def step_load_data(n_test:int):
@@ -78,12 +67,9 @@ def step_eval():
 
 @flow(name="AB‑Test‑Flow")
 def ab_test_flow(n_test:int=2000):
-    step_load_config()
     step_load_data(n_test)
     step_get_runs()
 
-    # read run_ids.json so we can map predictions step
-    import json, pathlib
     run_ids_path = ARTIFACT_DIR / "run_ids.json"
     run_ids = json.loads(run_ids_path.read_text())
     for rid in run_ids:

@@ -4,6 +4,7 @@ from typing import List, Dict, Optional
 from prefect import flow, task
 import os
 import yaml
+import mlflow
 #from prefect_docker import DockerContainer
 
 
@@ -23,7 +24,7 @@ DATA_DIR = str(DATA_DIR)
 MLRUNS_DIR = str(MLRUNS_DIR)
 TESTS_DIR = str(TESTS_DIR)
 
-def load_config(path="./model/train/config.yaml"):
+def load_config(path="./config.yaml"):
     with open(path, "r") as f:
         return yaml.safe_load(f)
 
@@ -114,13 +115,15 @@ def train_model(
         volumes=[
             f"{DATA_DIR}:/app/data:ro",
             f"{MLRUNS_DIR}:/app/mlruns",
-            f"{TESTS_DIR}:/app/pre_training_tests"
+            f"{TESTS_DIR}:/app/pre_training_tests",
+            f"{PROJECT_ROOT}/config.yaml:/app/config.yaml:ro"
         ],
         env={
             "MLFLOW_TRACKING_URI": "file:/app/mlruns",
             "MIN_TRAINING_SIZE": str(min_training_size),
             "MAX_ITER": str(max_iter),
             "RANDOM_STATE": str(random_state),
+            "MLFLOW_PARENT_RUN_ID": os.environ.get("MLFLOW_PARENT_RUN_ID"),
         },
         image_pull_policy="IF_NOT_PRESENT",
         stream_output=True,
@@ -150,21 +153,52 @@ def validate_model_robustness() -> None:
 # Prefect Flow orchestration
 # ────────────────────────────────────────────────────────────────────────────
 
-config = load_config()
 
-min_training_size = get_param(config, "training.min_training_size", 1000)
-max_iter = get_param(config, "training.max_iter", 10)
-random_state = get_param(config, "training.random_state", 42)
 
 @flow(name="Training Workflow")
-def training_flow(
-    min_training_size: int = min_training_size,
-    max_iter: int = max_iter,
-    random_state: int = random_state
-) -> None:
-    run_data_tests()
-    train_model(min_training_size, max_iter, random_state)
-    validate_model_robustness()
+def training_flow() -> None:
+    
+    config = load_config()
+    min_training_size = get_param(config, "training.min_training_size", 1000)
+    max_iter = get_param(config, "training.max_iter", 10)
+    random_state = get_param(config, "training.random_state", 42)
+    
+    FLOWRUNS_DIR = PROJECT_ROOT.as_posix() + "/flow_runs"
+    mlflow.set_tracking_uri(f"file:{FLOWRUNS_DIR}")
+    mlflow.set_experiment("workflow-executions")
+    with mlflow.start_run(run_name="training_workflow") as run:
+        parent_run_id = run.info.run_id
+        # Log workflow-level parameters
+        mlflow.log_param("min_training_size", min_training_size)
+        mlflow.log_param("max_iter", max_iter)
+        mlflow.log_param("random_state", random_state)
+        # Log config file as artifact
+        config_path = os.path.join(PROJECT_ROOT, "config.yaml")
+        if os.path.exists(config_path):
+            mlflow.log_artifact(config_path)
+        # Step 1: Data quality tests
+        try:
+            run_data_tests()
+            mlflow.log_param("data_tests", "success")
+        except Exception as e:
+            mlflow.log_param("data_tests", f"failed: {e}")
+            raise
+        # Step 2: Model training (child run in Docker)
+        try:
+            train_model(min_training_size=min_training_size, 
+                        max_iter=max_iter, 
+                        random_state=random_state)
+            mlflow.log_param("model_training", "success")
+        except Exception as e:
+            mlflow.log_param("model_training", f"failed: {e}")
+            raise
+        # Step 3: Robustness validation
+        try:
+            validate_model_robustness()
+            mlflow.log_param("robustness_validation", "success")
+        except Exception as e:
+            mlflow.log_param("robustness_validation", f"failed: {e}")
+            raise
 
 if __name__ == "__main__":
-    training_flow() #.serve.run()
+    training_flow() 

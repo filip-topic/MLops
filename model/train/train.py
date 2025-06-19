@@ -47,6 +47,10 @@ def train_model():
         # Drop rows missing required values
         df = df.dropna(subset=required_cols)
 
+        # Filter to use only rows with even Clothing ID for training
+        df = df[df['Clothing ID'] % 2 == 0]
+        print(f"Using {len(df)} rows with even Clothing ID for training")
+
         # Size check
         if len(df) < min_training_size:
             raise ValueError(f"Training aborted: dataset too small ({len(df)} rows).")
@@ -73,6 +77,8 @@ def train_model():
         mlflow.set_tracking_uri("file:./mlruns")
         mlflow.set_experiment("recommendation-models")
 
+        #parent_run_id = os.environ.get("MLFLOW_PARENT_RUN_ID")
+        #with mlflow.start_run(parent_run_id=parent_run_id) as run:
         with mlflow.start_run() as run:
             pipeline.fit(X_train, y_train)
 
@@ -89,7 +95,9 @@ def train_model():
                 "model_type": "LogisticRegression",
                 "min_training_size": min_training_size,
                 "max_iter": max_iter,
-                "random_state": random_state
+                "random_state": random_state,
+                "training_data_split": "even_clothing_id",
+                "training_samples": len(df)
             })
             mlflow.log_artifact("requirements.txt")
             print(f"Model logged to MLflow with Run ID: {run.info.run_id}")

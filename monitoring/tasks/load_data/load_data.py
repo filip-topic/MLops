@@ -11,8 +11,10 @@ def main():
     args = p.parse_args()
 
     df = pd.read_csv(args.input_path)
-    test_df = df.tail(args.n_test)
-    train_df = df.iloc[:-args.n_test]
+    
+    # Split data based on even/odd Clothing ID
+    train_df = df[df['Clothing ID'] % 2 == 0]  # Even Clothing ID for training
+    test_df = df[df['Clothing ID'] % 2 == 1]   # Odd Clothing ID for testing
 
     out = pathlib.Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
@@ -23,7 +25,11 @@ def main():
     meta = {
         "train_path": str(out / "train.parquet"),
         "test_path": str(out / "test.parquet"),
-        "n_test": args.n_test,
+        "n_train": len(train_df),
+        "n_test": len(test_df),
+        "split_method": "even_odd_clothing_id",
+        "train_clothing_ids": "even",
+        "test_clothing_ids": "odd"
     }
     (out / "meta_load_data.json").write_text(json.dumps(meta))
     print(json.dumps(meta, indent=2))

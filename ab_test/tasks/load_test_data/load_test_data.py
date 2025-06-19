@@ -8,13 +8,19 @@ def main():
     args = p.parse_args()
 
     df = pd.read_csv(args.csv)
-    test_df = df.tail(args.n_test).reset_index(drop=True)
+    # Use only rows with odd Clothing ID for test set
+    test_df = df[df['Clothing ID'] % 2 == 1].reset_index(drop=True)
 
     out = pathlib.Path(args.output_dir)
     out.mkdir(parents=True, exist_ok=True)
     test_df.to_parquet(out / "test.parquet", index=False)
 
-    meta = {"rows": len(test_df), "parquet": str(out / "test.parquet")}
+    meta = {
+        "rows": len(test_df), 
+        "parquet": str(out / "test.parquet"),
+        "split_method": "odd_clothing_id",
+        "clothing_ids_used": "odd"
+    }
     (out / "meta_test.json").write_text(json.dumps(meta))
     print(json.dumps(meta, indent=2))
 

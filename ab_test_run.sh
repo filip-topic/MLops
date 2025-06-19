@@ -1,4 +1,4 @@
-for d in ab_test/tasks/*; do docker build -t "ab-$(basename $d):latest" "$d"; done
+for d in ab_test/tasks/*; do docker build --no-cache -t "ab-$(basename $d):latest" "$d"; done
 
 #--no-cache
 

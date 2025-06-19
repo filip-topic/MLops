@@ -7,17 +7,17 @@ set -euo pipefail
 STEP_IMG_DATA_TESTS="pre-training-tests-image:latest"
 STEP_IMG_TRAIN="model-train-image:latest"
 STEP_IMG_VALIDATE="model-validate-image:latest"
-ORCH_IMG="training-orchestrator:latest"     # optional
+ORCH_IMG="training-orchestrator:latest"     
 
 echo "▶ Building step images…"
 
 docker build -t "${STEP_IMG_DATA_TESTS}" ./pre_training_tests #--no-cache
-docker build  -t "${STEP_IMG_TRAIN}" ./model/train --no-cache
+docker build  -t "${STEP_IMG_TRAIN}" ./model/train #--no-cache
 docker build -t "${STEP_IMG_VALIDATE}" ./model/validate #--no-cache
 
 echo "✔ Step images built."
 
-pip install -r requirements.txt
+#pip install -r requirements.txt
 
 echo "✔ requirements.txt installed."
 
